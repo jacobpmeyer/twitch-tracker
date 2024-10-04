@@ -12,7 +12,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 // Listen for tab switches
 chrome.tabs.onActivated.addListener(activeInfo => {
   chrome.tabs.get(activeInfo.tabId, tab => {
-    if (tab.url.includes('twitch.tv/') && !tab.url.includes('twitch.tv/directory')) {
+    if (tab.url.includes('twitch.tv/')) {
       updateChannel(tab.url);
     } else {
       switchChannel(null);
@@ -57,5 +57,29 @@ function getChannelFromUrl(url) {
 chrome.runtime.onSuspend.addListener(() => {
   if (currentChannel) {
     switchChannel(null);
+  }
+});
+
+// **Add this message listener for communication with popup.js**
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.type === 'getChannelData') {
+    const now = Date.now();
+    let updatedChannelTimes = { ...channelTimes };
+    if (currentChannel) {
+      const timeSpent = now - channelStartTime;
+      if (!updatedChannelTimes[currentChannel]) {
+        updatedChannelTimes[currentChannel] = 0;
+      }
+      updatedChannelTimes[currentChannel] += timeSpent;
+    }
+    sendResponse({ channelTimes: updatedChannelTimes });
+  } else if (request.type === 'resetData') {
+    // Reset data
+    channelTimes = {};
+    if (currentChannel && channelStartTime) {
+      channelStartTime = Date.now();
+    }
+    chrome.storage.local.set({ channelTimes });
+    sendResponse({});
   }
 });

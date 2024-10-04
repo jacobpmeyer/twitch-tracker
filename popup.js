@@ -15,19 +15,33 @@ document.addEventListener('DOMContentLoaded', () => {
   const channelList = document.getElementById('channel-list');
   const resetButton = document.getElementById('reset');
 
-  // Fetch data from storage
-  chrome.storage.local.get('channelTimes', data => {
-    const channelTimes = data.channelTimes || {};
-    for (const channel in channelTimes) {
-      const li = document.createElement('li');
-      li.textContent = `${channel}: ${formatTime(channelTimes[channel])}`;
-      channelList.appendChild(li);
-    }
+  // Function to update the display
+  function updateDisplay() {
+    // Request data from background script
+    chrome.runtime.sendMessage({ type: 'getChannelData' }, response => {
+      const channelTimes = response.channelTimes || {};
+      channelList.innerHTML = '';
+      for (const channel in channelTimes) {
+        const li = document.createElement('li');
+        li.textContent = `${channel}: ${formatTime(channelTimes[channel])}`;
+        channelList.appendChild(li);
+      }
+    });
+  }
+
+  // Update display every second
+  updateDisplay(); // Initial call
+  const intervalId = setInterval(updateDisplay, 1000);
+
+  // Clear interval when popup is closed
+  window.addEventListener('unload', () => {
+    clearInterval(intervalId);
   });
 
   // Reset data
   resetButton.addEventListener('click', () => {
-    chrome.storage.local.set({ channelTimes: {} }, () => {
+    // Send message to background script to reset data
+    chrome.runtime.sendMessage({ type: 'resetData' }, () => {
       channelList.innerHTML = '';
     });
   });
